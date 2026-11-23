@@ -172,50 +172,22 @@
   }
 
   function renderMap() {
-    var html = '';
-    html += '<section class="hero">' +
-      '<div>' +
+    var html = '<div class="opener-stage"><section class="hero">' +
       '<span class="pill die">ПАРАЛЛЕЛЬНАЯ ВСЕЛЕННАЯ DE ↔ RU · A0–B1</span>' +
-      '<h1>Немецкий как 3D-механизм, а не зубрёжка</h1>' +
-      '<p>Весь курс построен вокруг <strong>физической и пространственной логики</strong> немецкого языка для русскоязычных: почему глагол улетает в конец, как геометрия отличает <em>auf den Tisch</em> от <em>auf dem Tisch</em>, как устроены длинные слова и зачем немцам слово <em>doch</em>.</p>' +
+      '<h1>Немецкий как 3D&#8209;механизм,<br>а не зубрёжка</h1>' +
+      '<p>Физическая и пространственная логика немецкого языка для русскоязычных: почему глагол улетает в конец, как геометрия отличает <em>auf den Tisch</em> от <em>auf dem Tisch</em>, как устроены длинные слова и зачем немцам слово <em>doch</em>.</p>' +
       '<div class="hero-actions">' +
-      '<button class="primary" onclick="DL_UI.goTab(\'story\')">▶ Начать с Истории A0 (20 фраз)</button>' +
-      '<button class="btn-der" onclick="DL_UI.goLab(\'space\')">Открыть 3D-Лабораторию →</button>' +
-      '<button class="btn-das" onclick="DL_UI.goTab(\'practice\')">Диалог «У врача» & Тесты</button>' +
-      '</div></div>' +
+      '<button class="primary" onclick="DL_UI.goTab(\'story\')">▶ История A0 (20 фраз)</button>' +
+      '<button class="btn-der" onclick="DL_UI.goLab(\'space\')">3D-Лаборатория →</button>' +
+      '<button class="btn-das" onclick="DL_UI.goTab(\'practice\')">Диалог и Практика</button>' +
+      '</div>' +
       '<div class="stats-grid">' +
-      '<div class="stat-box"><div class="stat-val g-das">' + D.STORY_A0.sentences.length + ' фраз</div><div class="stat-lbl">История A0 с разбором слов</div></div>' +
-      '<div class="stat-box"><div class="stat-val g-der">' + D.RULES.length + ' урок</div><div class="stat-lbl">Кодекс логики DE ↔ RU</div></div>' +
-      '<div class="stat-box"><div class="stat-val g-die">' + D.SYSTEM_MODULES.length + '</div><div class="stat-lbl">Интерактивных 3D-симуляторов</div></div>' +
-      '<div class="stat-box"><div class="stat-val g-ochre">' + ALL_DRILL_CARDS.length + '</div><div class="stat-lbl">Карточек в тренажёре</div></div>' +
-      '</div></section>';
-
-    html += '<div class="grid-2">';
-    D.SYSTEM_MODULES.forEach(function (mod) {
-      var modRules = D.RULES.filter(function (r) { return r.module === mod.id; });
-      html += '<article class="card" style="border-top:3px solid var(--' + mod.accent + ')">' +
-        '<div class="card-head"><span>СИСТЕМА ' + mod.num + ' · ' + modRules.length + ' УРОКОВ</span>' +
-        '<button class="btn-' + mod.accent + '" style="padding:4px 10px;font-size:0.78rem" onclick="DL_UI.goLab(\'' + mod.lab + '\')">3D-Симулятор →</button></div>' +
-        '<div class="card-pad">' +
-        '<h2 class="card-title">' + esc(mod.title) + '</h2>' +
-        '<div class="mono dim" style="font-size:0.82rem;margin-bottom:8px">' + esc(mod.subtitle) + '</div>' +
-        '<p class="muted" style="font-size:0.93rem;margin-bottom:14px">' + esc(mod.summary) + '</p>' +
-        '<div class="row">' +
-        modRules.map(function (r) {
-          return '<button style="font-size:0.8rem;padding:5px 10px" onclick="DL_UI.openRule(\'' + r.id + '\')">' +
-            '#' + r.id + ' ' + esc(r.title.split(':')[0].split('(')[0].trim()) + '</button>';
-        }).join('') +
-        '</div></div></article>';
-    });
-    html += '</div>';
-
-    html += '<section class="card card-pad" style="margin-top:16px">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">' +
-      '<div><div class="mono dim" style="font-size:0.78rem">МАРШРУТ ОБУЧЕНИЯ · WORKFLOWS B + C + D + E</div>' +
-      '<h3 style="margin-top:4px">Как устроена связка между всеми уроками?</h3>' +
-      '<p class="muted" style="font-size:0.92rem;margin-top:4px"><strong>Шаг 1:</strong> Пройдите историю «Моё первое утро в Германии» (20 фраз A0), кликая на слова. <strong>Шаг 2:</strong> Закрепите механику в 3D-Лаборатории (Пространство, Рамка, Komposita, Глаголы). <strong>Шаг 3:</strong> Проживите диалог «У врача» и проверьте себя в Сборщике фраз.</p></div>' +
-      '<button class="primary" onclick="DL_UI.goTab(\'story\')">Перейти к Шагу 1 →</button>' +
-      '</div></section>';
+      '<button class="stat-box" onclick="DL_UI.goTab(\'story\')"><div class="stat-val g-das">' + D.STORY_A0.sentences.length + '</div><div class="stat-lbl">фраз в Истории A0<br>с рентгеном слов</div></button>' +
+      '<button class="stat-box" onclick="DL_UI.goLab(\'codex\')"><div class="stat-val g-der">' + D.RULES.length + '</div><div class="stat-lbl">урок логики<br>в Кодексе DE ↔ RU</div></button>' +
+      '<button class="stat-box" onclick="DL_UI.goLab(\'space\')"><div class="stat-val g-die">' + D.SYSTEM_MODULES.length + '</div><div class="stat-lbl">интерактивных<br>3D-симулятора</div></button>' +
+      '<button class="stat-box" onclick="DL_UI.goTab(\'srs\')"><div class="stat-val g-ochre">' + ALL_DRILL_CARDS.length + '</div><div class="stat-lbl">карточек для<br>быстрой тренировки</div></button>' +
+      '</div>' +
+      '</section></div>';
 
     viewEl.innerHTML = html;
   }

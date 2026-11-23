@@ -110,12 +110,17 @@ async function runCDP(url) {
     await cdp('Runtime.enable');
     await cdp('Network.enable');
 
-    for (const vp of [{ w: 1440, h: 900 }, { w: 390, h: 844 }]) {
+    for (const vp of [{ w: 1440, h: 900, tag: 'desktop' }, { w: 390, h: 844, tag: 'mobile' }]) {
       await cdp('Emulation.setDeviceMetricsOverride', { width: vp.w, height: vp.h, deviceScaleFactor: 1, mobile: vp.w < 600 });
       await cdp('Page.navigate', { url });
       await new Promise(r => setTimeout(r, 700));
       const overflow = await evalJS(`document.documentElement.scrollWidth > window.innerWidth + 1`);
       assert.equal(overflow, false, `Horizontal overflow at ${vp.w}px`);
+      if (process.env.SHOT_DIR) {
+        fs.mkdirSync(process.env.SHOT_DIR, { recursive: true });
+        const shot = await cdp('Page.captureScreenshot', { format: 'png' });
+        fs.writeFileSync(path.join(process.env.SHOT_DIR, `opener_${vp.tag}.png`), Buffer.from(shot.data, 'base64'));
+      }
     }
 
     // Desktop interactive flow across all 5 tabs
