@@ -152,11 +152,17 @@ async function runCDP(url) {
     const tileOk = await evalJS(`document.body.innerText.includes('Отлично!')`);
     assert.equal(tileOk, true);
 
-    // Tab 5: SRS
+    // Tab 5: Stateless endless 2-button card drill
     await evalJS(`DL_UI.goTab('srs')`);
     await evalJS(`DL_UI.revealSrs()`);
-    const srsBtn = await evalJS(`document.body.innerText.includes('Легко')`);
-    assert.equal(srsBtn, true);
+    const hasTwoBtns = await evalJS(`document.body.innerText.includes('Ещё раз') && document.body.innerText.includes('Окей') && !document.body.innerText.includes('JSON')`);
+    assert.equal(hasTwoBtns, true);
+    await evalJS(`DL_UI.gradeSrs(false)`); // "Ещё раз" keeps card in queue (28)
+    await evalJS(`DL_UI.revealSrs(); DL_UI.gradeSrs(true);`); // "Окей" removes card (27)
+    const remainingTxt = await evalJS(`document.body.innerText.includes('Осталось в очереди: 27')`);
+    assert.equal(remainingTxt, true);
+    const lsEmpty = await evalJS(`localStorage.length === 0`);
+    assert.equal(lsEmpty, true);
 
     assert.deepEqual(consoleErrors, [], `Console errors: ${consoleErrors.join('; ')}`);
     assert.deepEqual(failedReqs, [], `Failed network requests: ${failedReqs.join('; ')}`);

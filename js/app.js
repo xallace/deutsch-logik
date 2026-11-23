@@ -5,42 +5,22 @@
   var E = window.DL_ENGINE;
   var D = window.DL_DATA;
   var AUDIO_MAP = window.DL_AUDIO || {};
-  var STORE_KEY = 'deutsch-logik-v1';
 
-  function defaultProgress() {
-    return {
-      tab: 'map',
-      labSub: 'space',
-      pracSub: 'arzt',
-      storyCh: 0,
-      showAllRu: false,
-      storyDone: {},   // { n: true }
-      rulesRead: {},   // { id: true }
-      quizDone: {},    // { id: true }
-      tilesDone: {},   // { id: true }
-      srs: {},         // { cardId: { box: 0..4, due: ts } }
-      customCards: []  // [{ id, de, ru, note }]
-    };
-  }
+  // Pure in-memory session state (resets cleanly on every page reload)
+  var P = {
+    tab: 'map',
+    labSub: 'space',
+    pracSub: 'arzt',
+    storyCh: 0,
+    showAllRu: false,
+    storyDone: {},   // { n: true }
+    rulesRead: {},   // { id: true }
+    quizDone: {},    // { id: true }
+    tilesDone: {}    // { id: true }
+  };
 
-  function loadProgress() {
-    try {
-      var raw = localStorage.getItem(STORE_KEY);
-      if (!raw) return defaultProgress();
-      var parsed = JSON.parse(raw);
-      var base = defaultProgress();
-      for (var k in parsed) {
-        if (Object.prototype.hasOwnProperty.call(parsed, k)) base[k] = parsed[k];
-      }
-      return base;
-    } catch (e) {
-      return defaultProgress();
-    }
-  }
-
-  var P = loadProgress();
   function saveProgress() {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(P)); } catch (e) {}
+    // Stateless lab by design: session-only, nothing persisted across reloads
   }
 
   // ---------- Audio Player (Edge-TTS MP3 manifest + Web Speech fallback) ----------
@@ -119,27 +99,7 @@
     return 'ochre';
   }
 
-  function getStats() {
-    var storyDone = Object.keys(P.storyDone).length;
-    var rulesRead = Object.keys(P.rulesRead).length;
-    var quizDone = Object.keys(P.quizDone).length;
-    var tilesDone = Object.keys(P.tilesDone).length;
-    var allCards = buildAllSrsCards();
-    var now = Date.now();
-    var due = allCards.filter(function (c) {
-      var st = P.srs[c.id];
-      return !st || st.due <= now;
-    }).length;
-    return {
-      storyDone: storyDone, storyTotal: D.STORY_A0.sentences.length,
-      rulesRead: rulesRead, rulesTotal: D.RULES.length,
-      quizDone: quizDone, quizTotal: D.DIAGNOSTICS.length,
-      tilesDone: tilesDone, tilesTotal: D.CONSTRUCTORS.length,
-      due: due, totalCards: allCards.length
-    };
-  }
-
-  function buildAllSrsCards() {
+  function buildAllDrillCards() {
     var cards = [];
     D.STORY_A0.sentences.forEach(function (s) {
       cards.push({ id: 'st_' + s.n, de: s.de, ru: s.ru, note: s.hint, src: 'История A0 · #' + s.n });
@@ -147,8 +107,37 @@
     D.SURVIVAL_ARZT.vocab.forEach(function (v, idx) {
       cards.push({ id: 'ar_' + idx, de: v.de, ru: v.ru, note: v.note, src: 'У врача (Workflow B)' });
     });
-    P.customCards.forEach(function (c) { cards.push(c); });
     return cards;
+  }
+
+  var ALL_DRILL_CARDS = buildAllDrillCards();
+  var drillQueue = ALL_DRILL_CARDS.slice();
+  var drillOkCount = 0;
+
+  function shuffleArray(arr) {
+    var copy = arr.slice();
+    for (var i = copy.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = copy[i];
+      copy[i] = copy[j];
+      copy[j] = tmp;
+    }
+    return copy;
+  }
+
+  function getStats() {
+    return {
+      storyDone: Object.keys(P.storyDone).length,
+      storyTotal: D.STORY_A0.sentences.length,
+      rulesRead: Object.keys(P.rulesRead).length,
+      rulesTotal: D.RULES.length,
+      quizDone: Object.keys(P.quizDone).length,
+      quizTotal: D.DIAGNOSTICS.length,
+      tilesDone: Object.keys(P.tilesDone).length,
+      tilesTotal: D.CONSTRUCTORS.length,
+      due: drillQueue.length,
+      totalCards: ALL_DRILL_CARDS.length
+    };
   }
 
   // ---------- Stage3D Lifecycle ----------
@@ -200,7 +189,7 @@
       { id: 'story', label: '2 · История A0 (' + st.storyDone + '/' + st.storyTotal + ')' },
       { id: 'lab', label: '3 · 3D-Лаборатория (' + D.RULES.length + ' уроков)' },
       { id: 'practice', label: '4 · Диалог и Практика' },
-      { id: 'srs', label: '5 · Карточки SRS (' + st.due + ')' }
+      { id: 'srs', label: '5 · Карточки (' + st.due + ')' }
     ];
     document.getElementById('nav-tabs').innerHTML = tabs.map(function (t) {
       return '<button class="nav-tab ' + (P.tab === t.id ? 'active' : '') + '" data-tab="' + t.id + '">' + esc(t.label) + '</button>';
@@ -224,7 +213,7 @@
       '<div class="stat-box"><div class="stat-val g-das">' + st.storyDone + ' / ' + st.storyTotal + '</div><div class="stat-lbl">Фраз Истории A0 разобрано</div></div>' +
       '<div class="stat-box"><div class="stat-val g-der">' + st.rulesRead + ' / ' + st.rulesTotal + '</div><div class="stat-lbl">3D-правил изучено</div></div>' +
       '<div class="stat-box"><div class="stat-val g-die">' + (st.quizDone + st.tilesDone) + ' / ' + (st.quizTotal + st.tilesTotal) + '</div><div class="stat-lbl">Задач логики решено</div></div>' +
-      '<div class="stat-box"><div class="stat-val g-ochre">' + st.due + '</div><div class="stat-lbl">Карточек SRS на сегодня</div></div>' +
+      '<div class="stat-box"><div class="stat-val g-ochre">' + st.due + '</div><div class="stat-lbl">Карточек в очереди</div></div>' +
       '</div></section>';
 
     html += '<div class="grid-2">';
@@ -704,38 +693,34 @@
     viewEl.innerHTML = html;
   }
 
-  // ---------- SRS Flashcards ----------
+  // ---------- Endless In-Memory Flashcard Drill ----------
   var srsRevealed = false;
 
   function renderSrs() {
-    var cards = buildAllSrsCards();
-    var now = Date.now();
-    var dueCards = cards.filter(function (c) {
-      var st = P.srs[c.id];
-      return !st || st.due <= now;
-    });
-    var cur = dueCards[0] || null;
-    var mastered = cards.filter(function (c) { return P.srs[c.id] && P.srs[c.id].box >= 2; }).length;
+    var cur = drillQueue[0] || null;
+    var total = ALL_DRILL_CARDS.length;
 
     var html = '<div class="card card-pad" style="margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">' +
-      '<div><span class="pill das">ИНТЕРВАЛЬНОЕ ПОВТОРЕНИЕ (SRS)</span>' +
-      '<h2 style="margin-top:6px">Карточки из Истории A0 и диалога</h2>' +
-      '<p class="muted">К повторению сейчас: <strong>' + dueCards.length + '</strong> · Закреплено: <strong>' + mastered + ' / ' + cards.length + '</strong></p></div>' +
+      '<div><span class="pill das">ТРЕНАЖЁР КАРТОЧЕК · БЕЗ СОХРАНЕНИЯ</span>' +
+      '<h2 style="margin-top:6px">Крутим карточки, пока не уляжется в голове</h2>' +
+      '<p class="muted">В очереди: <strong>' + drillQueue.length + '</strong> · Пройдено (Окей): <strong>' + drillOkCount + ' / ' + total + '</strong> <span class="dim">(при обновлении страницы начнётся с начала)</span></p></div>' +
       '<div class="row">' +
-      '<button onclick="DL_UI.exportProgress()">⬇ Экспорт прогресса (JSON)</button>' +
-      '<button onclick="DL_UI.resetSrs()">↻ Повторить всё заново</button>' +
+      '<button onclick="DL_UI.resetSrs(true)">↻ Перемешать и заново</button>' +
       '</div></div>';
 
     if (!cur) {
       html += '<div class="srs-card"><div class="srs-face">' +
-        '<span class="pill das">ГОТОВО НА СЕГОДНЯ</span>' +
-        '<h2>Все доступные карточки повторены!</h2>' +
-        '<p class="muted">Вы можете сбросить расписание для тренировки или перейти в 3D-Лабораторию.</p>' +
-        '<button class="primary" onclick="DL_UI.resetSrs()">Пройти колоду ещё раз</button>' +
+        '<span class="pill das">ВСЁ ЗАКРЕПЛЕНО</span>' +
+        '<h2>Все ' + total + ' карточек пройдены!</h2>' +
+        '<p class="muted">Хотите прогнать колоду ещё раз в случайном порядке или по порядку?</p>' +
+        '<div class="row" style="justify-content:center">' +
+        '<button class="primary" onclick="DL_UI.resetSrs(true)">↻ Перемешать и пройти ещё раз</button>' +
+        '<button onclick="DL_UI.resetSrs(false)">По порядку (1 → ' + total + ')</button>' +
+        '</div>' +
         '</div></div>';
     } else {
       html += '<div class="srs-card">' +
-        '<div class="mono dim" style="font-size:0.78rem;margin-bottom:10px">' + esc(cur.src) + ' · Осталось: ' + dueCards.length + '</div>' +
+        '<div class="mono dim" style="font-size:0.78rem;margin-bottom:10px">' + esc(cur.src) + ' · Осталось в очереди: ' + drillQueue.length + '</div>' +
         '<div class="srs-face">' +
         '<div class="de-text" style="font-size:1.55rem">' + renderColoredTokensHTML(cur.de) + '</div>' +
         '<div class="row">' +
@@ -748,9 +733,8 @@
           : '<button class="primary" style="margin-top:10px" onclick="DL_UI.revealSrs()">Показать перевод и логику (Пробел)</button>') +
         '</div>' +
         (srsRevealed ? '<div class="row" style="justify-content:center;margin-top:18px">' +
-          '<button class="btn-die" onclick="DL_UI.gradeSrs(\'' + cur.id + '\', 0)">Снова (сейчас)</button>' +
-          '<button class="btn-der" onclick="DL_UI.gradeSrs(\'' + cur.id + '\', 1)">Помню (+1 дн.)</button>' +
-          '<button class="btn-das" onclick="DL_UI.gradeSrs(\'' + cur.id + '\', 2)">Легко (+4 дн.)</button>' +
+          '<button class="btn-die" onclick="DL_UI.gradeSrs(false)">Ещё раз</button>' +
+          '<button class="btn-das" onclick="DL_UI.gradeSrs(true)">Окей</button>' +
           '</div>' : '') +
         '</div>';
     }
@@ -846,22 +830,27 @@
       renderPractice();
     },
     revealSrs: function () { srsRevealed = true; renderSrs(); },
-    gradeSrs: function (id, quality) {
-      var cur = P.srs[id] || { box: 0, due: 0 };
-      var days = quality === 0 ? 0 : (quality === 1 ? 1 : 4);
-      P.srs[id] = { box: quality === 0 ? 0 : Math.min(4, cur.box + 1), due: Date.now() + days * 86400000 };
+    gradeSrs: function (ok) {
+      if (drillQueue.length) {
+        var card = drillQueue.shift();
+        if (ok) {
+          drillOkCount++;
+        } else {
+          // Re-insert a few cards later (or at the end if queue is short) so it comes back until learned
+          var insertAt = Math.min(drillQueue.length, 3);
+          drillQueue.splice(insertAt, 0, card);
+        }
+      }
       srsRevealed = false;
-      saveProgress();
       renderTopNav();
       renderSrs();
     },
-    resetSrs: function () { P.srs = {}; srsRevealed = false; saveProgress(); renderTopNav(); renderSrs(); },
-    exportProgress: function () {
-      var blob = new Blob([JSON.stringify(P, null, 2)], { type: 'application/json' });
-      var a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'deutsch-logik-progress.json';
-      a.click();
+    resetSrs: function (shuffle) {
+      drillQueue = shuffle ? shuffleArray(ALL_DRILL_CARDS) : ALL_DRILL_CARDS.slice();
+      drillOkCount = 0;
+      srsRevealed = false;
+      renderTopNav();
+      renderSrs();
     }
   };
 
