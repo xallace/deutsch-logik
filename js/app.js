@@ -6,22 +6,14 @@
   var D = window.DL_DATA;
   var AUDIO_MAP = window.DL_AUDIO || {};
 
-  // Pure in-memory session state (resets cleanly on every page reload)
+  // Pure in-memory view state (stateless lab, no progress tracking or persistence)
   var P = {
     tab: 'map',
     labSub: 'space',
     pracSub: 'arzt',
     storyCh: 0,
-    showAllRu: false,
-    storyDone: {},   // { n: true }
-    rulesRead: {},   // { id: true }
-    quizDone: {},    // { id: true }
-    tilesDone: {}    // { id: true }
+    showAllRu: false
   };
-
-  function saveProgress() {
-    // Stateless lab by design: session-only, nothing persisted across reloads
-  }
 
   // ---------- Audio Player (Edge-TTS MP3 manifest + Web Speech fallback) ----------
   var currentAudio = null;
@@ -112,7 +104,6 @@
 
   var ALL_DRILL_CARDS = buildAllDrillCards();
   var drillQueue = ALL_DRILL_CARDS.slice();
-  var drillOkCount = 0;
 
   function shuffleArray(arr) {
     var copy = arr.slice();
@@ -123,21 +114,6 @@
       copy[j] = tmp;
     }
     return copy;
-  }
-
-  function getStats() {
-    return {
-      storyDone: Object.keys(P.storyDone).length,
-      storyTotal: D.STORY_A0.sentences.length,
-      rulesRead: Object.keys(P.rulesRead).length,
-      rulesTotal: D.RULES.length,
-      quizDone: Object.keys(P.quizDone).length,
-      quizTotal: D.DIAGNOSTICS.length,
-      tilesDone: Object.keys(P.tilesDone).length,
-      tilesTotal: D.CONSTRUCTORS.length,
-      due: drillQueue.length,
-      totalCards: ALL_DRILL_CARDS.length
-    };
   }
 
   // ---------- Stage3D Lifecycle ----------
@@ -183,13 +159,12 @@
   var viewEl = null;
 
   function renderTopNav() {
-    var st = getStats();
     var tabs = [
       { id: 'map', label: '1 · Карта логики' },
-      { id: 'story', label: '2 · История A0 (' + st.storyDone + '/' + st.storyTotal + ')' },
-      { id: 'lab', label: '3 · 3D-Лаборатория (' + D.RULES.length + ' уроков)' },
+      { id: 'story', label: '2 · История A0' },
+      { id: 'lab', label: '3 · 3D-Лаборатория' },
       { id: 'practice', label: '4 · Диалог и Практика' },
-      { id: 'srs', label: '5 · Карточки (' + st.due + ')' }
+      { id: 'srs', label: '5 · Карточки' }
     ];
     document.getElementById('nav-tabs').innerHTML = tabs.map(function (t) {
       return '<button class="nav-tab ' + (P.tab === t.id ? 'active' : '') + '" data-tab="' + t.id + '">' + esc(t.label) + '</button>';
@@ -197,7 +172,6 @@
   }
 
   function renderMap() {
-    var st = getStats();
     var html = '';
     html += '<section class="hero">' +
       '<div>' +
@@ -210,10 +184,10 @@
       '<button class="btn-das" onclick="DL_UI.goTab(\'practice\')">Диалог «У врача» & Тесты</button>' +
       '</div></div>' +
       '<div class="stats-grid">' +
-      '<div class="stat-box"><div class="stat-val g-das">' + st.storyDone + ' / ' + st.storyTotal + '</div><div class="stat-lbl">Фраз Истории A0 разобрано</div></div>' +
-      '<div class="stat-box"><div class="stat-val g-der">' + st.rulesRead + ' / ' + st.rulesTotal + '</div><div class="stat-lbl">3D-правил изучено</div></div>' +
-      '<div class="stat-box"><div class="stat-val g-die">' + (st.quizDone + st.tilesDone) + ' / ' + (st.quizTotal + st.tilesTotal) + '</div><div class="stat-lbl">Задач логики решено</div></div>' +
-      '<div class="stat-box"><div class="stat-val g-ochre">' + st.due + '</div><div class="stat-lbl">Карточек в очереди</div></div>' +
+      '<div class="stat-box"><div class="stat-val g-das">' + D.STORY_A0.sentences.length + ' фраз</div><div class="stat-lbl">История A0 с разбором слов</div></div>' +
+      '<div class="stat-box"><div class="stat-val g-der">' + D.RULES.length + ' урок</div><div class="stat-lbl">Кодекс логики DE ↔ RU</div></div>' +
+      '<div class="stat-box"><div class="stat-val g-die">' + D.SYSTEM_MODULES.length + '</div><div class="stat-lbl">Интерактивных 3D-симуляторов</div></div>' +
+      '<div class="stat-box"><div class="stat-val g-ochre">' + ALL_DRILL_CARDS.length + '</div><div class="stat-lbl">Карточек в тренажёре</div></div>' +
       '</div></section>';
 
     html += '<div class="grid-2">';
@@ -228,9 +202,8 @@
         '<p class="muted" style="font-size:0.93rem;margin-bottom:14px">' + esc(mod.summary) + '</p>' +
         '<div class="row">' +
         modRules.map(function (r) {
-          var seen = P.rulesRead[r.id];
           return '<button style="font-size:0.8rem;padding:5px 10px" onclick="DL_UI.openRule(\'' + r.id + '\')">' +
-            (seen ? '✓ ' : '') + '#' + r.id + ' ' + esc(r.title.split(':')[0].split('(')[0].trim()) + '</button>';
+            '#' + r.id + ' ' + esc(r.title.split(':')[0].split('(')[0].trim()) + '</button>';
         }).join('') +
         '</div></div></article>';
     });
@@ -314,7 +287,6 @@
           '</div>';
       }
       var showHint = P.showAllRu || revealedHints[s.n];
-      var done = !!P.storyDone[s.n];
       html += '<article class="sentence-card ' + (immersionIdx === s.n ? 'active-play' : '') + '" data-story-n="' + s.n + '" style="border-left-color:var(--' + s.accent + ')">' +
         '<div class="sentence-top">' +
         '<div class="row"><span class="pill ' + s.accent + '">' + esc(s.tag) + '</span> <span class="mono dim">#' + (s.n < 10 ? '0' : '') + s.n + '/20</span></div>' +
@@ -322,7 +294,6 @@
         '<button class="btn-das" onclick="DL_UI.speak(\'' + esc(s.de).replace(/'/g, "\\'") + '\', \'slow\')">🐢 1 · Медленно</button>' +
         '<button onclick="DL_UI.toggleHint(' + s.n + ')">' + (showHint ? '👁 Скрыть' : '💡 2 · Перевод и логика') + '</button>' +
         '<button class="btn-der" onclick="DL_UI.speak(\'' + esc(s.de).replace(/'/g, "\\'") + '\', \'norm\')">▶ 3 · В темпе</button>' +
-        '<button class="' + (done ? 'active-das' : '') + '" onclick="DL_UI.toggleStoryDone(' + s.n + ')">' + (done ? '✓ Понял' : 'Отметить') + '</button>' +
         '</div></div>' +
         '<div class="de-text">' + renderColoredTokensHTML(s.de, s.n) + '</div>' +
         (showHint ? '<div class="hint-box"><div><strong>' + esc(s.ru) + '</strong></div>' +
@@ -570,7 +541,6 @@
 
     html += '<div class="grid-2">';
     list.forEach(function (r) {
-      P.rulesRead[r.id] = true;
       html += '<article class="rule-card" id="rule-' + r.id + '" style="border-top-color:var(--' + r.accent + ')">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">' +
         '<span class="pill ' + r.accent + '">УРОК #' + r.id + ' · ' + esc(r.level) + '</span>' +
@@ -588,7 +558,6 @@
         '</article>';
     });
     html += '</div>';
-    saveProgress();
     return html;
   }
 
@@ -643,8 +612,7 @@
         var picked = quizAnswers[q.id];
         html += '<div class="card card-pad">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
-          '<span class="pill der">ЗАДАЧА ' + (qi + 1) + '/' + D.DIAGNOSTICS.length + ' · ПРАВИЛО #' + q.rule + '</span>' +
-          (P.quizDone[q.id] ? '<span class="mono g-das">✓ Решено</span>' : '') + '</div>' +
+          '<span class="pill der">ЗАДАЧА ' + (qi + 1) + ' · ПРАВИЛО #' + q.rule + '</span></div>' +
           '<strong>' + esc(q.q) + '</strong>' +
           '<div>' + q.opts.map(function (o, oi) {
             var cls = '';
@@ -668,8 +636,7 @@
         });
         html += '<div class="card card-pad">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
-          '<span class="pill ochre">КОНСТРУКТОР · ПРАВИЛО #' + c.rule + '</span>' +
-          (P.tilesDone[c.id] ? '<span class="mono g-das">✓ Собрано</span>' : '') + '</div>' +
+          '<span class="pill ochre">КОНСТРУКТОР · ПРАВИЛО #' + c.rule + '</span></div>' +
           '<h3>' + esc(c.title) + '</h3>' +
           '<p class="muted" style="font-size:0.9rem">' + esc(c.prompt_ru) + '</p>' +
           '<div class="slot-zone">' +
@@ -701,26 +668,26 @@
     var total = ALL_DRILL_CARDS.length;
 
     var html = '<div class="card card-pad" style="margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">' +
-      '<div><span class="pill das">ТРЕНАЖЁР КАРТОЧЕК · БЕЗ СОХРАНЕНИЯ</span>' +
+      '<div><span class="pill das">ТРЕНАЖЁР КАРТОЧЕК</span>' +
       '<h2 style="margin-top:6px">Крутим карточки, пока не уляжется в голове</h2>' +
-      '<p class="muted">В очереди: <strong>' + drillQueue.length + '</strong> · Пройдено (Окей): <strong>' + drillOkCount + ' / ' + total + '</strong> <span class="dim">(при обновлении страницы начнётся с начала)</span></p></div>' +
+      '<p class="muted">«Ещё раз» вернёт карточку обратно в круг, «Окей» уберёт до следующего круга.</p></div>' +
       '<div class="row">' +
       '<button onclick="DL_UI.resetSrs(true)">↻ Перемешать и заново</button>' +
       '</div></div>';
 
     if (!cur) {
       html += '<div class="srs-card"><div class="srs-face">' +
-        '<span class="pill das">ВСЁ ЗАКРЕПЛЕНО</span>' +
-        '<h2>Все ' + total + ' карточек пройдены!</h2>' +
+        '<span class="pill das">КРУГ ПРОЙДЕН</span>' +
+        '<h2>Все карточки в этом круге отработаны!</h2>' +
         '<p class="muted">Хотите прогнать колоду ещё раз в случайном порядке или по порядку?</p>' +
         '<div class="row" style="justify-content:center">' +
         '<button class="primary" onclick="DL_UI.resetSrs(true)">↻ Перемешать и пройти ещё раз</button>' +
-        '<button onclick="DL_UI.resetSrs(false)">По порядку (1 → ' + total + ')</button>' +
+        '<button onclick="DL_UI.resetSrs(false)">По порядку</button>' +
         '</div>' +
         '</div></div>';
     } else {
       html += '<div class="srs-card">' +
-        '<div class="mono dim" style="font-size:0.78rem;margin-bottom:10px">' + esc(cur.src) + ' · Осталось в очереди: ' + drillQueue.length + '</div>' +
+        '<div class="mono dim" style="font-size:0.78rem;margin-bottom:10px">' + esc(cur.src) + ' · В круге: ' + drillQueue.length + '</div>' +
         '<div class="srs-face">' +
         '<div class="de-text" style="font-size:1.55rem">' + renderColoredTokensHTML(cur.de) + '</div>' +
         '<div class="row">' +
@@ -756,27 +723,23 @@
 
   // ---------- Global UI Handlers ----------
   window.DL_UI = {
-    goTab: function (tab) { P.tab = tab; saveProgress(); render(); window.scrollTo(0, 0); },
-    goLab: function (sub) { P.tab = 'lab'; P.labSub = sub; saveProgress(); render(); window.scrollTo(0, 0); },
+    goTab: function (tab) { P.tab = tab; render(); window.scrollTo(0, 0); },
+    goLab: function (sub) { P.tab = 'lab'; P.labSub = sub; render(); window.scrollTo(0, 0); },
     jumpLab: function (sub) { this.goLab(sub); },
     openRule: function (id) {
       P.tab = 'lab'; P.labSub = 'codex'; labFilter = 'all'; labSearch = '';
-      saveProgress(); render();
+      render();
       var el = document.getElementById('rule-' + id);
       if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     },
     speak: function (txt, speed) { playGerman(txt, speed); },
     closeXray: function () { currentXray = null; var b = document.getElementById('xray-slot'); if (b) b.innerHTML = renderXrayBannerHTML(); },
-    setStoryCh: function (ch) { P.storyCh = ch; saveProgress(); renderStory(); },
-    toggleAllRu: function () { P.showAllRu = !P.showAllRu; saveProgress(); renderStory(); },
+    setStoryCh: function (ch) { P.storyCh = ch; renderStory(); },
+    toggleAllRu: function () { P.showAllRu = !P.showAllRu; renderStory(); },
     toggleHint: function (n) { revealedHints[n] = !revealedHints[n]; renderStory(); },
-    toggleStoryDone: function (n) {
-      if (P.storyDone[n]) delete P.storyDone[n]; else P.storyDone[n] = true;
-      saveProgress(); renderTopNav(); renderStory();
-    },
     startImmersion: function () { playImmersionFrom(0); },
     stopImmersion: stopImmersion,
-    setLabSub: function (sub) { P.labSub = sub; saveProgress(); renderLab(); },
+    setLabSub: function (sub) { P.labSub = sub; renderLab(); },
     replayStage: function () { if (stageCtrl) stageCtrl.replay(); },
     setLS: function (k, v) { labState[k] = v; var lc = document.getElementById('lab-controls'); if (lc) lc.innerHTML = renderLabControlsHTML(); syncStageFromControls(); },
     setLSPrep: function (p) { labState.spacePrep = p; labState.spacePosture = 'book'; this.setLS('spacePrep', p); },
@@ -794,15 +757,9 @@
     },
     setCodexFilter: function (f) { labFilter = f; renderLab(); },
     setCodexSearch: function (v) { labSearch = v; renderLab(); },
-    setPracSub: function (s) { P.pracSub = s; saveProgress(); renderPractice(); },
+    setPracSub: function (s) { P.pracSub = s; renderPractice(); },
     answerQuiz: function (qid, oi) {
       quizAnswers[qid] = oi;
-      var qObj = D.DIAGNOSTICS.find(function (x) { return x.id === qid; });
-      if (qObj && qObj.opts[oi] && qObj.opts[oi].ok) {
-        P.quizDone[qid] = true;
-        saveProgress();
-        renderTopNav();
-      }
       renderPractice();
     },
     addTile: function (cid, word) {
@@ -822,9 +779,6 @@
       var res = E.checkTileSentence(ts.chosen, c.answers);
       ts.result = res;
       if (res.ok) {
-        P.tilesDone[cid] = true;
-        saveProgress();
-        renderTopNav();
         playGerman(c.answers[0], 'norm');
       }
       renderPractice();
@@ -833,23 +787,17 @@
     gradeSrs: function (ok) {
       if (drillQueue.length) {
         var card = drillQueue.shift();
-        if (ok) {
-          drillOkCount++;
-        } else {
-          // Re-insert a few cards later (or at the end if queue is short) so it comes back until learned
+        if (!ok) {
           var insertAt = Math.min(drillQueue.length, 3);
           drillQueue.splice(insertAt, 0, card);
         }
       }
       srsRevealed = false;
-      renderTopNav();
       renderSrs();
     },
     resetSrs: function (shuffle) {
       drillQueue = shuffle ? shuffleArray(ALL_DRILL_CARDS) : ALL_DRILL_CARDS.slice();
-      drillOkCount = 0;
       srsRevealed = false;
-      renderTopNav();
       renderSrs();
     }
   };

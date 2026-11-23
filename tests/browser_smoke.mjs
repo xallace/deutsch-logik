@@ -121,11 +121,13 @@ async function runCDP(url) {
     // Desktop interactive flow across all 5 tabs
     await cdp('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
 
-    // Tab 2: Story A0 + Word X-Ray
+    // Tab 2: Story A0 + Word X-Ray (verify no Отметить/Понял button)
     await evalJS(`DL_UI.goTab('story')`);
     await new Promise(r => setTimeout(r, 200));
     const storyCards = await evalJS(`document.querySelectorAll('.sentence-card').length`);
     assert.equal(storyCards, 20);
+    const hasMarkBtn = await evalJS(`document.body.innerText.includes('Отметить')`);
+    assert.equal(hasMarkBtn, false);
     await evalJS(`document.querySelector('.tok-word[data-word="Kaffeemaschine"]').click()`);
     const xrayText = await evalJS(`document.getElementById('xray-slot').innerText`);
     assert.match(xrayText, /Kaffeemaschine/);
@@ -159,7 +161,7 @@ async function runCDP(url) {
     assert.equal(hasTwoBtns, true);
     await evalJS(`DL_UI.gradeSrs(false)`); // "Ещё раз" keeps card in queue (28)
     await evalJS(`DL_UI.revealSrs(); DL_UI.gradeSrs(true);`); // "Окей" removes card (27)
-    const remainingTxt = await evalJS(`document.body.innerText.includes('Осталось в очереди: 27')`);
+    const remainingTxt = await evalJS(`document.body.innerText.includes('В круге: 27')`);
     assert.equal(remainingTxt, true);
     const lsEmpty = await evalJS(`localStorage.length === 0`);
     assert.equal(lsEmpty, true);
