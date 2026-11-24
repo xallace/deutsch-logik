@@ -88,7 +88,6 @@ check('All Story A0, Rules, and Beim Arzt audio clips exist on disk in audio/', 
     assert.ok(fs.statSync(full).size > 200, `Empty mp3 file: ${full}`);
   };
   for (const s of D.STORY_A0.sentences) {
-    checkClip(s.de, '-22%');
     checkClip(s.de, '-6%');
   }
   for (const r of D.RULES) {
@@ -96,7 +95,6 @@ check('All Story A0, Rules, and Beim Arzt audio clips exist on disk in audio/', 
   }
   for (const l of D.SURVIVAL_ARZT.dialogue) {
     checkClip(l.de, '+0%');
-    checkClip(l.de, '-20%');
   }
 });
 

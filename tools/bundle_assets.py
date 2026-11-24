@@ -91,12 +91,11 @@ def main():
     DE_V = 'de-DE-ConradNeural'
     KATJA = 'de-DE-KatjaNeural'
 
-    # 1. Story A0 sentences (slow -22% & normal -6%) + chapters + rule recap examples
+    # 1. Story A0 sentences (normal -6%) + chapters + rule recap examples
     for ch in WFD.CHAPTERS:
         de_ch = ch['de_title'].split('·', 1)[-1].strip() + '.'
         add_req(de_ch, DE_V, '-10%', f'ch_{ch["num"]}')
     for s in WFD.SENTENCES:
-        add_req(s['de'], DE_V, '-22%', f'story_{s["n"]}_slow')
         add_req(s['de'], DE_V, '-6%', f'story_{s["n"]}_norm')
     for r in WFD.RECAP_RULES:
         for ex in (r['ex1'], r['ex2']):
@@ -123,13 +122,12 @@ def main():
             if lang == 'de':
                 add_req(txt, DE_V, rate, 'wfe_doch')
 
-    # 4. Workflow B 'Beim Arzt' dialogue (exact speaker voices & rates from build_survival.py)
+    # 4. Workflow B 'Beim Arzt' dialogue (exact speaker voices & normal rate from build_survival.py)
     with open(os.path.join(LAB_ROOT, 'workflow_b_survival', 'beim_arzt.json'), 'r', encoding='utf-8') as f:
         arzt = json.load(f)
     for line in arzt['dialogue']:
         v = arzt['speakers'][line['spk']]['voice']
         add_req(line['de'], v, '+0%', f'arzt_{line["n"]}_norm')
-        add_req(line['de'], v, '-20%', f'arzt_{line["n"]}_slow')
 
     # 5. Extra key interactive sandbox sentences (Wo/Wohin, Inversion, TeKaMoLo, Komposita)
     sandbox_extras = [

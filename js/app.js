@@ -31,9 +31,8 @@
     }
   }
 
-  function resolveAudioSrc(text, speed) {
-    var ratePref = speed === 'slow' ? ['-22%', '-20%', '-10%', '-8%', '-6%', '+0%']
-      : ['-6%', '-10%', '+0%', '-8%', '-20%', '-22%'];
+  function resolveAudioSrc(text) {
+    var ratePref = ['-6%', '-10%', '+0%', '-8%'];
     for (var i = 0; i < ratePref.length; i++) {
       var k = text + '|' + ratePref[i];
       if (AUDIO_MAP[k]) return AUDIO_MAP[k];
@@ -41,9 +40,9 @@
     return AUDIO_MAP[text] || null;
   }
 
-  function playGerman(text, speed, onEnd) {
+  function playGerman(text, onEnd) {
     stopAudio();
-    var src = resolveAudioSrc(text, speed || 'norm');
+    var src = resolveAudioSrc(text);
     if (src) {
       var aud = new Audio(src);
       currentAudio = aud;
@@ -61,7 +60,7 @@
     if (window.speechSynthesis && typeof SpeechSynthesisUtterance === 'function') {
       var u = new SpeechSynthesisUtterance(text);
       u.lang = 'de-DE';
-      u.rate = speed === 'slow' ? 0.78 : 0.96;
+      u.rate = 0.96;
       if (onEnd) u.onend = onEnd;
       window.speechSynthesis.speak(u);
       return true;
@@ -143,7 +142,7 @@
       '<div><span class="pill ' + esc(x.cls ? x.cls.replace('g-', '') : 'ochre') + '">' + esc(x.badge) + '</span> ' +
       '<strong class="de-text ' + esc(x.cls) + '" style="margin-left:8px">' + esc(x.word) + '</strong></div>' +
       '<div class="row">' +
-      '<button onclick="DL_UI.speak(\'' + esc(x.word).replace(/'/g, "\\'") + '\', \'norm\')">▶ Произношение</button>' +
+      '<button onclick="DL_UI.speak(\'' + esc(x.word).replace(/'/g, "\\'") + '\')">▶ Произношение</button>' +
       (x.lab ? '<button class="btn-der" onclick="DL_UI.jumpLab(\'' + esc(x.lab) + '\')">Открыть в 3D-Лаборатории →</button>' : '') +
       '<button onclick="DL_UI.closeXray()">✕</button>' +
       '</div></div>' +
@@ -214,7 +213,7 @@
     renderStory();
     var card = document.querySelector('[data-story-n="' + immersionIdx + '"]');
     if (card && card.scrollIntoView) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    playGerman(list[idx].de, 'norm', function () {
+    playGerman(list[idx].de, function () {
       if (!immersionPlaying) return;
       immersionTimer = setTimeout(function () {
         playImmersionFrom(idx + 1);
@@ -255,7 +254,7 @@
         var chObj = chMap[s.ch];
         html += '<div style="margin:16px 0 10px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">' +
           '<div><strong class="mono g-der">' + esc(chObj.de) + '</strong> <span class="muted">· ' + esc(chObj.ru) + '</span></div>' +
-          '<button style="padding:4px 10px;font-size:0.78rem" onclick="DL_UI.speak(\'' + esc(chObj.audio_de).replace(/'/g, "\\'") + '\', \'norm\')">▶ Название главы</button>' +
+          '<button style="padding:4px 10px;font-size:0.78rem" onclick="DL_UI.speak(\'' + esc(chObj.audio_de).replace(/'/g, "\\'") + '\')">▶ Название главы</button>' +
           '</div>';
       }
       var showHint = P.showAllRu || revealedHints[s.n];
@@ -263,9 +262,8 @@
         '<div class="sentence-top">' +
         '<div class="row"><span class="pill ' + s.accent + '">' + esc(s.tag) + '</span> <span class="mono dim">#' + (s.n < 10 ? '0' : '') + s.n + '/20</span></div>' +
         '<div class="audio-controls">' +
-        '<button class="btn-das" onclick="DL_UI.speak(\'' + esc(s.de).replace(/'/g, "\\'") + '\', \'slow\')">🐢 1 · Медленно</button>' +
-        '<button onclick="DL_UI.toggleHint(' + s.n + ')">' + (showHint ? '👁 Скрыть' : '💡 2 · Перевод и логика') + '</button>' +
-        '<button class="btn-der" onclick="DL_UI.speak(\'' + esc(s.de).replace(/'/g, "\\'") + '\', \'norm\')">▶ 3 · В темпе</button>' +
+        '<button onclick="DL_UI.toggleHint(' + s.n + ')">' + (showHint ? '👁 Скрыть' : '💡 Перевод и логика') + '</button>' +
+        '<button class="btn-der" onclick="DL_UI.speak(\'' + esc(s.de).replace(/'/g, "\\'") + '\')">▶ Слушать</button>' +
         '</div></div>' +
         '<div class="de-text">' + renderColoredTokensHTML(s.de, s.n) + '</div>' +
         (showHint ? '<div class="hint-box"><div><strong>' + esc(s.ru) + '</strong></div>' +
@@ -484,7 +482,7 @@
       '<div class="muted" style="margin-top:4px">' + esc(info.ru) + '</div>' +
       '<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border-soft);font-size:0.9rem">' + esc(info.rule) + '</div>' +
       '<div class="row" style="margin-top:10px">' +
-      '<button class="btn-der" onclick="DL_UI.speak(\'' + esc(info.de).replace(/'/g, "\\'") + '\', \'norm\')">▶ Озвучить пример</button>' +
+      '<button class="btn-der" onclick="DL_UI.speak(\'' + esc(info.de).replace(/'/g, "\\'") + '\')">▶ Озвучить пример</button>' +
       '</div></div>';
     return out;
   }
@@ -524,7 +522,7 @@
           return '<div style="padding:8px 10px;background:var(--panel);border-radius:7px;margin-top:6px;display:flex;justify-content:space-between;gap:8px;align-items:center">' +
             '<div><div style="font-family:var(--font-serif);font-weight:700">' + renderColoredTokensHTML(ex.de) + '</div>' +
             '<div class="muted" style="font-size:0.84rem">' + esc(ex.ru) + ' <span class="mono dim">· ' + esc(ex.note) + '</span></div></div>' +
-            '<button style="padding:5px 9px" onclick="DL_UI.speak(\'' + esc(ex.de).replace(/'/g, "\\'") + '\', \'norm\')">▶</button></div>';
+            '<button style="padding:5px 9px" onclick="DL_UI.speak(\'' + esc(ex.de).replace(/'/g, "\\'") + '\')">▶</button></div>';
         }).join('') + '</div>' +
         '<div class="trap-box"><s>✕ ' + esc(r.trap.wrong) + '</s> → <b>✓ ' + esc(r.trap.right) + '</b><div class="muted" style="margin-top:3px">' + esc(r.trap.why) + '</div></div>' +
         '</article>';
@@ -561,8 +559,7 @@
         html += '<div class="card card-pad" style="margin-bottom:10px;border-left:4px solid var(--' + (l.spk === 'A' ? 'der' : 'die') + ')">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">' +
           '<span class="mono ' + sp.cls + '" style="font-size:0.8rem">' + esc(sp.name + ' · ' + sp.label_ru) + '</span>' +
-          '<div class="row"><button style="padding:4px 9px" onclick="DL_UI.speak(\'' + esc(l.de).replace(/'/g, "\\'") + '\', \'norm\')">▶</button>' +
-          '<button style="padding:4px 9px" onclick="DL_UI.speak(\'' + esc(l.de).replace(/'/g, "\\'") + '\', \'slow\')">0.8×</button></div></div>' +
+          '<div class="row"><button style="padding:4px 9px" onclick="DL_UI.speak(\'' + esc(l.de).replace(/'/g, "\\'") + '\')">▶</button></div></div>' +
           '<div class="de-text" style="font-size:1.12rem">' + renderColoredTokensHTML(l.de) + '</div>' +
           '<div class="muted" style="font-size:0.9rem;margin-top:3px">' + esc(l.ru) + '</div>' +
           (l.trap ? '<div class="trap-box" style="margin-top:8px"><s>✕ ' + esc(l.trap.wrong) + '</s> → <b>✓ ' + esc(l.trap.right) + '</b><div class="muted">' + esc(l.trap.why) + '</div></div>'
@@ -663,8 +660,7 @@
         '<div class="srs-face">' +
         '<div class="de-text" style="font-size:1.55rem">' + renderColoredTokensHTML(cur.de) + '</div>' +
         '<div class="row">' +
-        '<button class="btn-der" onclick="DL_UI.speak(\'' + esc(cur.de).replace(/'/g, "\\'") + '\', \'norm\')">▶ В темпе</button>' +
-        '<button class="btn-das" onclick="DL_UI.speak(\'' + esc(cur.de).replace(/'/g, "\\'") + '\', \'slow\')">🐢 Медленно</button>' +
+        '<button class="btn-der" onclick="DL_UI.speak(\'' + esc(cur.de).replace(/'/g, "\\'") + '\')">▶ Слушать</button>' +
         '</div>' +
         (srsRevealed
           ? '<div class="hint-box" style="width:100%;text-align:left"><strong>' + esc(cur.ru) + '</strong>' +
@@ -704,7 +700,7 @@
       var el = document.getElementById('rule-' + id);
       if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     },
-    speak: function (txt, speed) { playGerman(txt, speed); },
+    speak: function (txt) { playGerman(txt); },
     closeXray: function () { currentXray = null; var b = document.getElementById('xray-slot'); if (b) b.innerHTML = renderXrayBannerHTML(); },
     setStoryCh: function (ch) { P.storyCh = ch; renderStory(); },
     toggleAllRu: function () { P.showAllRu = !P.showAllRu; renderStory(); },
@@ -751,7 +747,7 @@
       var res = E.checkTileSentence(ts.chosen, c.answers);
       ts.result = res;
       if (res.ok) {
-        playGerman(c.answers[0], 'norm');
+        playGerman(c.answers[0]);
       }
       renderPractice();
     },
@@ -785,7 +781,7 @@
     if (tok) {
       openXray(tok.getAttribute('data-word'), tok.getAttribute('data-sent'));
       if (P.tab !== 'story') {
-        playGerman(tok.getAttribute('data-word'), 'norm');
+        playGerman(tok.getAttribute('data-word'));
       }
     }
   });

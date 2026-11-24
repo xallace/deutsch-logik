@@ -133,6 +133,8 @@ async function runCDP(url) {
     assert.equal(storyCards, 20);
     const hasMarkBtn = await evalJS(`document.body.innerText.includes('Отметить')`);
     assert.equal(hasMarkBtn, false);
+    const hasSlowStory = await evalJS(`document.body.innerText.includes('Медленно')`);
+    assert.equal(hasSlowStory, false);
     await evalJS(`document.querySelector('.tok-word[data-word="Kaffeemaschine"]').click()`);
     const xrayText = await evalJS(`document.getElementById('xray-slot').innerText`);
     assert.match(xrayText, /Kaffeemaschine/);
@@ -152,6 +154,8 @@ async function runCDP(url) {
 
     // Tab 4: Practice (Beim Arzt + Quiz + Tiles)
     await evalJS(`DL_UI.goTab('practice')`);
+    const hasSlowArzt = await evalJS(`document.body.innerText.includes('0.8×')`);
+    assert.equal(hasSlowArzt, false);
     await evalJS(`DL_UI.setPracSub('quiz')`);
     await evalJS(`DL_UI.answerQuiz('d1', 1)`);
     await evalJS(`DL_UI.setPracSub('tiles')`);
@@ -162,7 +166,7 @@ async function runCDP(url) {
     // Tab 5: Stateless endless 2-button card drill
     await evalJS(`DL_UI.goTab('srs')`);
     await evalJS(`DL_UI.revealSrs()`);
-    const hasTwoBtns = await evalJS(`document.body.innerText.includes('Ещё раз') && document.body.innerText.includes('Окей') && !document.body.innerText.includes('JSON')`);
+    const hasTwoBtns = await evalJS(`document.body.innerText.includes('Ещё раз') && document.body.innerText.includes('Окей') && !document.body.innerText.includes('JSON') && !document.body.innerText.includes('Медленно')`);
     assert.equal(hasTwoBtns, true);
     await evalJS(`DL_UI.gradeSrs(false)`); // "Ещё раз" keeps card in queue (28)
     await evalJS(`DL_UI.revealSrs(); DL_UI.gradeSrs(true);`); // "Окей" removes card (27)
